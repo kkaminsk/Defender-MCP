@@ -1,0 +1,5 @@
+name: specification-implementation
+title: "Defender-MCP Specification Implementation"
+description: "Implement the 3-tool Defender MCP server per DefenderMcpSpecification.md"
+status: implemented
+created: 2026-02-15

@@ -1,73 +1,39 @@
 import { describe, it, expect } from 'vitest';
-import { validatePath, sanitizeString } from '../src/utils/validation.js';
-import { Config } from '../src/types/index.js';
+import { validateFilePath } from '../src/validation.js';
 
-const defaultConfig: Config = {
-  maxConcurrentScans: 4,
-  scanTimeoutMs: 300000,
-  allowedPaths: ['*'],
-  cacheTtlMs: 60000,
-  useMpCmdRun: false,
-};
-
-const restrictedConfig: Config = {
-  ...defaultConfig,
-  allowedPaths: ['C:\\Users\\test', 'D:\\scans'],
-};
-
-describe('validatePath', () => {
+describe('validateFilePath', () => {
   it('accepts valid absolute paths', () => {
-    const result = validatePath('C:\\Users\\test\\file.exe', defaultConfig);
-    expect(result.valid).toBe(true);
-    expect(result.normalized).toBeTruthy();
+    expect(validateFilePath('C:\\Users\\test\\file.exe')).toEqual({ valid: true });
+    expect(validateFilePath('D:\\folder\\file.txt')).toEqual({ valid: true });
   });
 
-  it('rejects empty paths', () => {
-    expect(validatePath('', defaultConfig).valid).toBe(false);
-    expect(validatePath('   ', defaultConfig).valid).toBe(false);
+  it('rejects relative paths', () => {
+    const r = validateFilePath('relative\\path.txt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toBe('Path must be absolute');
   });
 
   it('rejects path traversal', () => {
-    expect(validatePath('C:\\Users\\..\\Windows\\System32', defaultConfig).valid).toBe(false);
-    expect(validatePath('..\\..\\etc\\passwd', defaultConfig).valid).toBe(false);
-    expect(validatePath('C:\\test\\..', defaultConfig).valid).toBe(false);
+    const r = validateFilePath('C:\\Users\\..\\secret.txt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toBe('Path traversal not allowed');
   });
 
   it('rejects UNC paths', () => {
-    expect(validatePath('\\\\server\\share\\file', defaultConfig).valid).toBe(false);
-    expect(validatePath('//server/share/file', defaultConfig).valid).toBe(false);
+    const r = validateFilePath('\\\\server\\share\\file.txt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toBe('UNC paths not allowed');
   });
 
   it('rejects null bytes', () => {
-    expect(validatePath('C:\\test\0file', defaultConfig).valid).toBe(false);
+    const r = validateFilePath('C:\\Users\\test\0file.txt');
+    expect(r.valid).toBe(false);
+    expect(r.error).toBe('Null bytes not allowed');
   });
 
-  it('enforces allowed paths', () => {
-    const result = validatePath('C:\\Users\\test\\file.exe', restrictedConfig);
-    expect(result.valid).toBe(true);
-
-    const blocked = validatePath('C:\\Windows\\System32\\cmd.exe', restrictedConfig);
-    expect(blocked.valid).toBe(false);
-    expect(blocked.error).toContain('not in allowed directories');
-  });
-
-  it('rejects non-string input', () => {
-    expect(validatePath(null as any, defaultConfig).valid).toBe(false);
-    expect(validatePath(123 as any, defaultConfig).valid).toBe(false);
-  });
-});
-
-describe('sanitizeString', () => {
-  it('truncates long strings', () => {
-    const long = 'a'.repeat(2000);
-    expect(sanitizeString(long, 100).length).toBe(100);
-  });
-
-  it('removes non-printable characters', () => {
-    expect(sanitizeString('hello\x00world')).toBe('helloworld');
-  });
-
-  it('handles non-string input', () => {
-    expect(sanitizeString(null as any)).toBe('');
+  it('rejects empty string', () => {
+    const r = validateFilePath('');
+    expect(r.valid).toBe(false);
+    expect(r.error).toBe('File path is required');
   });
 });
