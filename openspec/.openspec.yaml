@@ -1,0 +1,3 @@
+version: "1.0"
+project: defender-mcp
+description: MCP server for Windows Defender file scanning
