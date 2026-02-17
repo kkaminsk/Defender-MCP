@@ -1,6 +1,6 @@
 # Defender-MCP
 
-A lightweight Model Context Protocol (MCP) server that uses **PowerShell only** to scan files and report Windows Defender antivirus state. No MpCmdRun.exe, no WMI, no AMSI.
+A lightweight Model Context Protocol (MCP) server that uses **PowerShell only** to scan files and report Windows Defender antivirus state.
 
 ## Tools
 
@@ -34,15 +34,18 @@ npm run build
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEFENDER_FILE_SCAN_TIMEOUT_MS` | `60000` | File scan timeout |
-| `DEFENDER_QUICK_SCAN_TIMEOUT_MS` | `600000` | Quick scan timeout |
+| `DEFENDER_FILE_SCAN_TIMEOUT_MS` | `60000` | File scan timeout in ms (clamped to `1000..3600000`) |
+| `DEFENDER_QUICK_SCAN_TIMEOUT_MS` | `600000` | Quick scan timeout in ms (clamped to `1000..3600000`) |
+| `DEFENDER_STATUS_TIMEOUT_MS` | `30000` | Status query timeout in ms (clamped to `1000..3600000`) |
+| `DEFENDER_ALLOWED_PATHS` | current working directory | Comma-separated absolute allowlist for `scan_file`; use `*` to disable restriction |
+| `DEFENDER_EXECUTION_POLICY` | `RemoteSigned` | PowerShell execution policy (`Bypass` is opt-in if explicitly set) |
 | `DEFENDER_POWERSHELL_PATH` | `powershell.exe` | PowerShell executable |
 
 ## Requirements
 
 - Windows with Windows Defender
 - Node.js >= 18
-- No admin privileges required
+- Elevated privileges are not required for basic status queries; scan behavior can vary by local policy.
 
 ## Testing
 

@@ -1,8 +1,21 @@
 import { validateFilePath } from '../validation.js';
 import { runPowerShell } from '../powershell.js';
 import { ScanFileResult } from '../types.js';
+import { getFileScanTimeoutMs } from '../config.js';
 
-const TIMEOUT = parseInt(process.env.DEFENDER_FILE_SCAN_TIMEOUT_MS || '60000', 10);
+interface ScanThreatPayload {
+  name?: string;
+  severityID?: number;
+  statusID?: number;
+  detected_at?: string;
+}
+
+interface ScanPayload {
+  scanned?: boolean;
+  threats_found?: number;
+  threats?: ScanThreatPayload[];
+  error?: string;
+}
 
 const SEVERITY_MAP: Record<number, string> = {
   0: 'Unknown', 1: 'Low', 2: 'Moderate', 3: 'High', 4: 'Severe',
@@ -13,8 +26,8 @@ const STATUS_MAP: Record<number, string> = {
 };
 
 export async function handleScanFile(args: Record<string, unknown>): Promise<ScanFileResult> {
-  const filePath = args.file_path as string;
-  if (!filePath) {
+  const filePath = typeof args.file_path === 'string' ? args.file_path : '';
+  if (!filePath.trim()) {
     return { file_path: '', scanned: false, error: 'file_path is required' };
   }
 
@@ -27,6 +40,7 @@ export async function handleScanFile(args: Record<string, unknown>): Promise<Sca
   const escaped = filePath.replace(/'/g, "''");
 
   const script = `
+$ErrorActionPreference = 'Stop'
 $FilePath = '${escaped}'
 if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
     @{ scanned = $false; error = "File not found: $FilePath" } | ConvertTo-Json -Compress
@@ -53,15 +67,15 @@ foreach ($d in $detections) {
 `;
 
   try {
-    const output = await runPowerShell(script, TIMEOUT);
-    const parsed = JSON.parse(output.trim());
+    const output = await runPowerShell(script, getFileScanTimeoutMs());
+    const parsed = JSON.parse(output.trim()) as ScanPayload;
     if (parsed.error) {
       return { file_path: filePath, scanned: false, error: parsed.error };
     }
-    const threats = (parsed.threats || []).map((t: any) => ({
+    const threats = (parsed.threats || []).map((t) => ({
       name: t.name || 'Unknown',
-      severity: SEVERITY_MAP[t.severityID] || 'Unknown',
-      status: STATUS_MAP[t.statusID] || 'Unknown',
+      severity: SEVERITY_MAP[t.severityID ?? -1] || 'Unknown',
+      status: STATUS_MAP[t.statusID ?? -1] || 'Unknown',
       detected_at: t.detected_at || '',
     }));
     return {
@@ -70,7 +84,8 @@ foreach ($d in $detections) {
       threats_found: parsed.threats_found || 0,
       threats,
     };
-  } catch (err: any) {
-    return { file_path: filePath, scanned: false, error: err.message };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Scan failed';
+    return { file_path: filePath, scanned: false, error: message };
   }
 }

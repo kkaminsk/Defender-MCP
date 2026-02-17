@@ -2,23 +2,23 @@
 
 ## Core Infrastructure
 - [x] Project scaffolding (package.json, tsconfig, etc.)
-- [x] TypeScript types and interfaces
-- [x] Enum mappings for threat data model
-- [x] Configuration loader
+- [x] TypeScript types and interfaces (minimal 3-tool scope)
+- [ ] Enum mappings for complete threat data model
+- [ ] Configuration loader
 
 ## Services
 - [x] PowerShell execution wrapper
-- [x] Windows Defender service abstraction
-- [x] Scan queue with rate limiting
+- [ ] Windows Defender service abstraction
+- [ ] Scan queue with rate limiting
 
 ## Tools
 - [x] scan_file tool
 - [x] quick_scan tool
-- [x] get_defender_status tool
-- [x] get_threats tool
-- [x] get_threat_detections tool
-- [x] update_signatures tool
-- [x] get_scan_status tool
+- [x] get_defender_status tool (`get_status` in implemented server)
+- [ ] get_threats tool
+- [ ] get_threat_detections tool
+- [ ] update_signatures tool
+- [ ] get_scan_status tool
 
 ## Utilities
 - [x] Path validation and sanitization
@@ -26,8 +26,8 @@
 
 ## Testing
 - [x] Validation tests
-- [x] Enum mapping tests
-- [x] Queue tests
+- [ ] Enum mapping tests
+- [ ] Queue tests
 
 ## Documentation
 - [x] Architecture.md

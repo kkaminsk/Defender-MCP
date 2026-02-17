@@ -3,8 +3,14 @@ import { writeFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { getExecutionPolicy } from './config.js';
 
 const POWERSHELL_PATH = process.env.DEFENDER_POWERSHELL_PATH || 'powershell.exe';
+
+interface ProcessError extends Error {
+  killed?: boolean;
+  signal?: NodeJS.Signals | null;
+}
 
 export async function runPowerShell(script: string, timeoutMs: number): Promise<string> {
   const tempFile = path.join(tmpdir(), `defender-mcp-${randomUUID()}.ps1`);
@@ -14,15 +20,19 @@ export async function runPowerShell(script: string, timeoutMs: number): Promise<
     return await new Promise<string>((resolve, reject) => {
       const proc = execFile(
         POWERSHELL_PATH,
-        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', tempFile],
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', getExecutionPolicy(), '-File', tempFile],
         { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024, windowsHide: true },
         (error, stdout, stderr) => {
+          const stderrText = stderr.trim();
           if (error) {
-            if ((error as any).killed || (error as any).signal === 'SIGTERM') {
+            const processError = error as ProcessError;
+            if (processError.killed || processError.signal === 'SIGTERM') {
               reject(new Error('Scan timed out'));
             } else {
-              reject(new Error(stderr?.trim() || error.message));
+              reject(new Error(stderrText || error.message));
             }
+          } else if (stderrText) {
+            reject(new Error(stderrText));
           } else {
             resolve(stdout);
           }

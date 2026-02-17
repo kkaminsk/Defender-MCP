@@ -1,5 +1,18 @@
 import { runPowerShell } from '../powershell.js';
 import { DefenderStatus } from '../types.js';
+import { getStatusTimeoutMs } from '../config.js';
+
+interface DefenderStatusPayload {
+  antivirus_enabled: boolean;
+  realtime_protection: boolean;
+  antispyware_enabled: boolean;
+  service_running: boolean;
+  signature_version: string;
+  signature_last_updated: string;
+  last_quick_scan: string;
+  last_full_scan: string;
+  computer_state: number;
+}
 
 const STATE_MAP: Record<number, string> = {
   0: 'Clean',
@@ -12,6 +25,7 @@ const STATE_MAP: Record<number, string> = {
 
 export async function handleGetStatus(): Promise<DefenderStatus> {
   const script = `
+$ErrorActionPreference = 'Stop'
 $s = Get-MpComputerStatus
 @{
     antivirus_enabled = [bool]$s.AntivirusEnabled
@@ -19,21 +33,22 @@ $s = Get-MpComputerStatus
     antispyware_enabled = [bool]$s.AntispywareEnabled
     service_running = [bool]$s.AMServiceEnabled
     signature_version = $s.AntivirusSignatureVersion
-    signature_last_updated = $s.AntivirusSignatureLastUpdated.ToUniversalTime().ToString('o')
-    last_quick_scan = $s.QuickScanEndTime.ToUniversalTime().ToString('o')
-    last_full_scan = $s.FullScanEndTime.ToUniversalTime().ToString('o')
+    signature_last_updated = if ($s.AntivirusSignatureLastUpdated) { $s.AntivirusSignatureLastUpdated.ToUniversalTime().ToString('o') } else { '' }
+    last_quick_scan = if ($s.QuickScanEndTime) { $s.QuickScanEndTime.ToUniversalTime().ToString('o') } else { '' }
+    last_full_scan = if ($s.FullScanEndTime) { $s.FullScanEndTime.ToUniversalTime().ToString('o') } else { '' }
     computer_state = $s.ComputerState
 } | ConvertTo-Json -Compress
 `;
 
   try {
-    const output = await runPowerShell(script, 30000);
-    const parsed = JSON.parse(output.trim());
+    const output = await runPowerShell(script, getStatusTimeoutMs());
+    const parsed = JSON.parse(output.trim()) as DefenderStatusPayload;
     return {
       ...parsed,
       computer_state: STATE_MAP[parsed.computer_state] || `Unknown (${parsed.computer_state})`,
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unable to query Defender status';
     return {
       antivirus_enabled: false,
       realtime_protection: false,
@@ -44,7 +59,7 @@ $s = Get-MpComputerStatus
       last_quick_scan: '',
       last_full_scan: '',
       computer_state: 'Unknown',
-      error: err.message,
+      error: message,
     };
   }
 }

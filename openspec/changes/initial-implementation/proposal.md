@@ -1,18 +1,18 @@
 # Initial Implementation
 
 ## Summary
-Implement the Defender-MCP server with all 7 MCP tools, PowerShell execution layer, async scan queue, and input validation.
+Original plan for a broad Defender-MCP server with 7 MCP tools, queueing, and extended service layers.
 
 ## Motivation
 AI agents need a standardized way to invoke Windows Defender for file scanning, threat queries, and signature management. MCP provides the protocol; this server provides the Defender integration.
 
 ## Scope
-- 7 MCP tools (scan_file, quick_scan, get_defender_status, get_threats, get_threat_detections, update_signatures, get_scan_status)
+- 7 MCP tools (planned)
 - PowerShell execution wrapper with timeout handling
-- Async scan queue with bounded concurrency
+- Async scan queue with bounded concurrency (planned)
 - Path validation and input sanitization
-- Comprehensive TypeScript types and enum mappings
-- Unit tests for validation, enums, and queue logic
+- Comprehensive TypeScript types and enum mappings (planned)
+- Unit tests for validation, enums, and queue logic (planned)
 
 ## Non-Goals
 - MDE REST API integration (future)
